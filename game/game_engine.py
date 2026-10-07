@@ -11,7 +11,6 @@ from game.beat import (
     LANE_COLORS
 )
 
-
 WIDTH, HEIGHT = 480, 640
 FPS = 60
 HIT_Y = HEIGHT - 80
@@ -19,13 +18,17 @@ HIT_WINDOW = 30
 BG = (15, 10, 25)
 LANE_W = WIDTH // LANES
 
+# Task 3: BPM settings
+BPM = 120
+BEAT_INTERVAL = 60 / BPM
+
 
 class GameEngine:
     def __init__(self):
         pygame.init()
         pygame.mixer.init()
 
-        # Sound effects
+        # Task 1: Sound effects
         self.hit_sounds = {
             "PERFECT": self.make_sound(880, 0.10),
             "GREAT": self.make_sound(660, 0.10),
@@ -84,8 +87,8 @@ class GameEngine:
         self.max_combo = 0
         self.misses = 0
 
-        self.spawn_timer = 0
-        self.spawn_interval = 45
+        # Task 3: BPM-synchronized spawning
+        self.beat_timer = 0.0
 
         self.speed = 5
         self.frame = 0
@@ -100,7 +103,7 @@ class GameEngine:
             LANES - 1
         )
 
-        # Randomly create normal or hold note
+        # Task 2: Randomly create normal or hold note
         is_hold = random.random() < 0.25
 
         self.notes.append(
@@ -280,6 +283,7 @@ class GameEngine:
             self.combo // 5
         )
 
+        # Task 1: Play sound
         self.hit_sounds[grade].play()
 
         self.feedback.append(
@@ -298,26 +302,29 @@ class GameEngine:
             return
 
         self.frame += 1
-        self.spawn_timer += 1
 
-        if self.spawn_timer >= self.spawn_interval:
+        # ==========================================
+        # TASK 3: BPM-SYNCHRONIZED NOTE SPAWNING
+        # 120 BPM = one note every 0.5 seconds
+        # ==========================================
+
+        self.beat_timer += 1 / FPS
+
+        if self.beat_timer >= BEAT_INTERVAL:
+
+            self.beat_timer -= BEAT_INTERVAL
 
             self.spawn_note()
 
-            self.spawn_timer = 0
+        # Gradually increase speed
+        if self.frame % 600 == 0:
 
-            if self.frame % 600 == 0:
+            self.speed = min(
+                10,
+                self.speed + 0.5
+            )
 
-                self.speed = min(
-                    10,
-                    self.speed + 0.5
-                )
-
-                self.spawn_interval = max(
-                    25,
-                    self.spawn_interval - 2
-                )
-
+        # Update notes
         for note in self.notes:
 
             note.update()
@@ -552,6 +559,12 @@ class GameEngine:
             (220, 100, 100)
         )
 
+        bpm_text = self.font.render(
+            f"BPM: {BPM}",
+            True,
+            (180, 180, 255)
+        )
+
         self.screen.blit(
             sc,
             (10, 10)
@@ -565,6 +578,12 @@ class GameEngine:
         self.screen.blit(
             mi,
             (WIDTH - 170, 10)
+        )
+
+        # Task 3: Display BPM
+        self.screen.blit(
+            bpm_text,
+            (WIDTH - 150, 40)
         )
 
         # Game over
