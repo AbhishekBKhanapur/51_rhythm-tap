@@ -85,9 +85,14 @@ class GameEngine:
         self.score = 0
         self.combo = 0
         self.max_combo = 0
+
+        # Task 4: Grade counters
+        self.perfects = 0
+        self.greats = 0
+        self.oks = 0
         self.misses = 0
 
-        # Task 3: BPM-synchronized spawning
+        # Task 3: BPM timer
         self.beat_timer = 0.0
 
         self.speed = 5
@@ -133,7 +138,7 @@ class GameEngine:
                         if event.key == key:
                             self.start_note(i)
 
-            # Detect when player releases a key
+            # Detect key release for hold notes
             if event.type == pygame.KEYUP:
 
                 for i, key in enumerate(LANE_KEYS):
@@ -200,6 +205,7 @@ class GameEngine:
 
         else:
 
+            # Wrong timing / wrong lane
             self.combo = 0
 
             self.feedback.append(
@@ -258,18 +264,30 @@ class GameEngine:
 
         if best_dist < 8:
 
-            grade, pts = "PERFECT", 300
+            grade = "PERFECT"
+            pts = 300
             col = (255, 220, 0)
+
+            # Task 4
+            self.perfects += 1
 
         elif best_dist < 18:
 
-            grade, pts = "GREAT", 200
+            grade = "GREAT"
+            pts = 200
             col = (100, 220, 100)
+
+            # Task 4
+            self.greats += 1
 
         else:
 
-            grade, pts = "OK", 100
+            grade = "OK"
+            pts = 100
             col = (180, 180, 255)
+
+            # Task 4
+            self.oks += 1
 
         self.combo += 1
 
@@ -304,8 +322,8 @@ class GameEngine:
         self.frame += 1
 
         # ==========================================
-        # TASK 3: BPM-SYNCHRONIZED NOTE SPAWNING
-        # 120 BPM = one note every 0.5 seconds
+        # TASK 3: BPM-SYNCHRONIZED SPAWNING
+        # 120 BPM = one beat every 0.5 seconds
         # ==========================================
 
         self.beat_timer += 1 / FPS
@@ -350,6 +368,9 @@ class GameEngine:
                 self.score += 300
 
                 self.hit_sounds["PERFECT"].play()
+
+                # Count hold completion as PERFECT
+                self.perfects += 1
 
                 self.feedback.append(
                     [
@@ -403,8 +424,30 @@ class GameEngine:
             if ttl > 1
         ]
 
+        # Game over
         if self.misses >= 15:
             self.game_over = True
+
+    def get_accuracy(self):
+        """Calculate hit accuracy percentage."""
+
+        total = (
+            self.perfects
+            + self.greats
+            + self.oks
+            + self.misses
+        )
+
+        if total == 0:
+            return 0.0
+
+        hits = (
+            self.perfects
+            + self.greats
+            + self.oks
+        )
+
+        return (hits / total) * 100
 
     def draw(self):
 
@@ -497,7 +540,7 @@ class GameEngine:
                 border_radius=5
             )
 
-            # Show HOLD text
+            # HOLD text
             if note.hold:
 
                 hold_text = self.font.render(
@@ -540,7 +583,10 @@ class GameEngine:
                 )
             )
 
+        # ==========================================
         # HUD
+        # ==========================================
+
         sc = self.font.render(
             f"Score: {self.score}",
             True,
@@ -580,22 +626,25 @@ class GameEngine:
             (WIDTH - 170, 10)
         )
 
-        # Task 3: Display BPM
         self.screen.blit(
             bpm_text,
             (WIDTH - 150, 40)
         )
 
-        # Game over
+        # ==========================================
+        # TASK 4: GAME OVER SUMMARY
+        # ==========================================
+
         if self.game_over:
 
+            # Dark overlay
             ov = pygame.Surface(
                 (WIDTH, HEIGHT),
                 pygame.SRCALPHA
             )
 
             ov.fill(
-                (0, 0, 0, 160)
+                (0, 0, 0, 190)
             )
 
             self.screen.blit(
@@ -609,11 +658,47 @@ class GameEngine:
                 (220, 60, 60)
             )
 
-            sc_msg = self.font.render(
-                f"Final Score: {self.score}  "
-                f"Max Combo: {self.max_combo}x",
+            # Grade counts
+            perfect_text = self.font.render(
+                f"PERFECT: {self.perfects}",
+                True,
+                (255, 220, 0)
+            )
+
+            great_text = self.font.render(
+                f"GREAT:   {self.greats}",
+                True,
+                (100, 220, 100)
+            )
+
+            ok_text = self.font.render(
+                f"OK:      {self.oks}",
+                True,
+                (180, 180, 255)
+            )
+
+            miss_text = self.font.render(
+                f"MISS:    {self.misses}",
+                True,
+                (220, 100, 100)
+            )
+
+            accuracy_text = self.font.render(
+                f"Accuracy: {self.get_accuracy():.1f}%",
+                True,
+                (255, 255, 255)
+            )
+
+            score_text = self.font.render(
+                f"Score: {self.score}",
                 True,
                 (200, 200, 200)
+            )
+
+            combo_text = self.font.render(
+                f"Max Combo: {self.max_combo}x",
+                True,
+                (255, 220, 80)
             )
 
             restart = self.font.render(
@@ -622,21 +707,76 @@ class GameEngine:
                 (160, 160, 160)
             )
 
+            # Draw everything
             self.screen.blit(
                 msg,
                 (
                     WIDTH // 2
                     - msg.get_width() // 2,
-                    HEIGHT // 2 - 70
+                    100
                 )
             )
 
             self.screen.blit(
-                sc_msg,
+                perfect_text,
                 (
                     WIDTH // 2
-                    - sc_msg.get_width() // 2,
-                    HEIGHT // 2
+                    - perfect_text.get_width() // 2,
+                    180
+                )
+            )
+
+            self.screen.blit(
+                great_text,
+                (
+                    WIDTH // 2
+                    - great_text.get_width() // 2,
+                    215
+                )
+            )
+
+            self.screen.blit(
+                ok_text,
+                (
+                    WIDTH // 2
+                    - ok_text.get_width() // 2,
+                    250
+                )
+            )
+
+            self.screen.blit(
+                miss_text,
+                (
+                    WIDTH // 2
+                    - miss_text.get_width() // 2,
+                    285
+                )
+            )
+
+            self.screen.blit(
+                accuracy_text,
+                (
+                    WIDTH // 2
+                    - accuracy_text.get_width() // 2,
+                    330
+                )
+            )
+
+            self.screen.blit(
+                score_text,
+                (
+                    WIDTH // 2
+                    - score_text.get_width() // 2,
+                    375
+                )
+            )
+
+            self.screen.blit(
+                combo_text,
+                (
+                    WIDTH // 2
+                    - combo_text.get_width() // 2,
+                    410
                 )
             )
 
@@ -645,7 +785,7 @@ class GameEngine:
                 (
                     WIDTH // 2
                     - restart.get_width() // 2,
-                    HEIGHT // 2 + 50
+                    480
                 )
             )
 
